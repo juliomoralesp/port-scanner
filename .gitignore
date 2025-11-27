@@ -1,0 +1,7 @@
+ports
+*.o
+*.so
+*.a
+*~
+.vscode/
+*.swp
