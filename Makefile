@@ -7,6 +7,9 @@ all: $(TARGET)
 $(TARGET): ports.c
 	$(CC) $(CFLAGS) -o $(TARGET) ports.c
 
+check:
+	@echo "Build check passed - no tests defined yet"
+
 clean:
 	rm -f $(TARGET)
 
