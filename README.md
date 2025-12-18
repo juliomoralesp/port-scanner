@@ -7,7 +7,51 @@ port and the owner process (pid/name) when available.
 Build
 -----
 
+Standard build:
+
     make
+
+For Synology NAS (static build for better portability):
+
+    make synology
+
+For cross-compilation to Synology NAS:
+
+    make synology-cross CC_SYNOLOGY=<your-cross-compiler>
+
+Example for ARM-based Synology:
+
+    make synology-cross CC_SYNOLOGY=arm-linux-gnueabihf-gcc
+
+Example for x86_64-based Synology:
+
+    make synology-cross CC_SYNOLOGY=x86_64-pc-linux-gnu-gcc
+
+Synology NAS Installation
+--------------------------
+
+1. **Build on the Synology device** (recommended):
+   - Enable SSH on your Synology NAS
+   - Install the development tools via Package Center (look for "Development Tools" or similar)
+   - Copy the source files to your NAS
+   - Run `make synology` to create a static binary
+   - Copy the binary to a location in your PATH (e.g., `/usr/local/bin/`)
+
+2. **Cross-compile on your development machine**:
+   - Install the appropriate Synology toolchain for your NAS model
+   - Run `make synology-cross CC_SYNOLOGY=<toolchain-gcc>`
+   - Transfer the `ports` binary to your Synology NAS via SCP
+   - Make it executable: `chmod +x ports`
+   - Move to a suitable location: `mv ports /usr/local/bin/`
+
+3. **Running on Synology**:
+   - SSH into your Synology NAS
+   - Run with `sudo ./ports` for best results (to see all process owners)
+   - The tool should work on most Synology DSM versions
+
+**Note**: The Synology build uses POSIX-compliant functions only and avoids GNU-specific 
+extensions, ensuring compatibility with Synology's toolchain (typically based on older GCC 
+versions).
 
 Usage examples
 --------------

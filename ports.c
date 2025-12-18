@@ -15,7 +15,10 @@
  *   ./ports -j         # output JSON instead of a table
  */
 
+/* _GNU_SOURCE made optional for Synology compatibility */
+#ifdef USE_GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <arpa/inet.h>
 #include <dirent.h>
@@ -29,6 +32,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <ctype.h>
 
 typedef struct owner_info { pid_t pid; char name[256]; struct owner_info *next; } owner_info_t;
 
@@ -50,6 +54,25 @@ static bool g_json = false;
 typedef enum { SORT_PORT, SORT_PID, SORT_PROTO } sort_field_t;
 static sort_field_t g_sort_field = SORT_PORT;
 static bool g_sort_reverse = false;
+
+/* Portable case-insensitive substring search (replaces GNU strcasestr) */
+static const char *portable_strcasestr(const char *haystack, const char *needle) {
+    if (!haystack || !needle) return NULL;
+    if (!*needle) return haystack;
+    
+    size_t needle_len = strlen(needle);
+    for (const char *p = haystack; *p; p++) {
+        bool match = true;
+        for (size_t i = 0; i < needle_len && p[i]; i++) {
+            if (tolower((unsigned char)p[i]) != tolower((unsigned char)needle[i])) {
+                match = false;
+                break;
+            }
+        }
+        if (match && p[needle_len - 1]) return p;
+    }
+    return NULL;
+}
 
 // helpers
 static unsigned hex_to_port(const char *hex) { return (unsigned)strtoul(hex, NULL, 16); }
@@ -203,31 +226,30 @@ static void json_escape(const char *s, FILE *out)
     for (; *s; ++s) {
         unsigned char c = *s;
         switch (c) {
-        case '\':
-            fputs("\\", out);
+        case '\\':
+            fputs("\\\\", out);
             break;
         case '"':
-            fputs("\"", out);
+            fputs("\\\"", out);
             break;
-        case '':
-            fputs("\b", out);
+        case '\b':
+            fputs("\\b", out);
             break;
-        case '':
-            fputs("\f", out);
+        case '\f':
+            fputs("\\f", out);
             break;
-        case '
-':
-            fputs("\n", out);
+        case '\n':
+            fputs("\\n", out);
             break;
-        case '':
-            fputs("\r", out);
+        case '\r':
+            fputs("\\r", out);
             break;
-        case '	':
-            fputs("\t", out);
+        case '\t':
+            fputs("\\t", out);
             break;
         default:
             if (c < 0x20)
-                fprintf(out, "\u%04x", c);
+                fprintf(out, "\\u%04x", c);
             else
                 fputc(c, out);
             break;
@@ -252,50 +274,41 @@ static void print_json(sock_entry_t **arr, size_t n)
         if (g_search_name && *g_search_name) {
             bool match = false;
             for (owner_info_t *o = e->owners; o && !match; o = o->next)
-                if (strcasestr(o->name, g_search_name))
+                if (portable_strcasestr(o->name, g_search_name))
                     match = true;
             if (!match)
                 continue;
         }
 
         if (!firstEntry)
-            printf(",
-");
+            printf(",\n");
 
         firstEntry = false;
-        printf("  {
-");
-        printf("    "proto": "");
+        printf("  {\n");
+        printf("    \"proto\": \"");
         json_escape(e->proto, stdout);
-        printf("",
-");
-        printf("    "port": %u,
-", e->port);
-        printf("    "local_ip": "");
+        printf("\",\n");
+        printf("    \"port\": %u,\n", e->port);
+        printf("    \"local_ip\": \"");
         json_escape(e->local_ip, stdout);
-        printf("",
-");
-        printf("    "inode": %lu,
-", e->inode);
-        printf("    "owners": [");
+        printf("\",\n");
+        printf("    \"inode\": %lu,\n", e->inode);
+        printf("    \"owners\": [");
 
         bool fo = true;
         for (owner_info_t *o = e->owners; o; o = o->next) {
             if (!fo)
                 printf(", ");
             fo = false;
-            printf("{"pid": %d, "name": "", o->pid);
+            printf("{\"pid\": %d, \"name\": \"", o->pid);
             json_escape(o->name, stdout);
-            printf(""}");
+            printf("\"}");
         }
 
-        printf("]
-  }");
+        printf("]\n  }");
     }
 
-    printf("
-]
-");
+    printf("\n]\n");
 }
 
 
@@ -303,7 +316,7 @@ static void print_table(sock_entry_t **arr, size_t n) {
     printf("Proto  Port   Local IP        Inode       Owner(s)\n");
     printf("-----  -----  --------------- ----------  ----------------------------\n");
     for (size_t i=0;i<n;++i) {
-        sock_entry_t *e = arr[i]; if (g_search_port>0 && e->port != (unsigned)g_search_port) continue; if (g_search_name && *g_search_name) { bool match=false; for (owner_info_t *o=e->owners;o;o=o->next) if (strcasestr(o->name, g_search_name)) { match=true; break; } if (!match) continue; }
+        sock_entry_t *e = arr[i]; if (g_search_port>0 && e->port != (unsigned)g_search_port) continue; if (g_search_name && *g_search_name) { bool match=false; for (owner_info_t *o=e->owners;o;o=o->next) if (portable_strcasestr(o->name, g_search_name)) { match=true; break; } if (!match) continue; }
         printf("%-5s  %-5u  %-15s  %-10lu  ", e->proto, e->port, e->local_ip, e->inode);
         if (!e->owners) { printf("(no owner found)\n"); continue; }
         bool first=true; for (owner_info_t *o=e->owners;o;o=o->next) { if (!first) printf(", "); first=false; printf("%d/%s", o->pid, o->name); } printf("\n");
@@ -345,5 +358,4 @@ int main(int argc, char **argv) {
     free_entries(head);
     return 0;
 }
-
 
