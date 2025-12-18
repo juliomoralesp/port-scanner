@@ -61,9 +61,14 @@ static const char *portable_strcasestr(const char *haystack, const char *needle)
     if (!*needle) return haystack;
     
     size_t needle_len = strlen(needle);
-    for (const char *p = haystack; *p; p++) {
+    size_t haystack_len = strlen(haystack);
+    
+    /* Early exit if needle is longer than haystack */
+    if (needle_len > haystack_len) return NULL;
+    
+    for (const char *p = haystack; *p && (size_t)(p - haystack) <= haystack_len - needle_len; p++) {
         size_t i;
-        for (i = 0; i < needle_len && p[i]; i++) {
+        for (i = 0; i < needle_len; i++) {
             if (tolower((unsigned char)p[i]) != tolower((unsigned char)needle[i])) {
                 break;
             }
