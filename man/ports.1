@@ -1,0 +1,41 @@
+.TH PORTS 1 "2026-01-13" "ports 1" "User Commands"
+.SH NAME
+ports \- simple TCP port scanner
+.SH SYNOPSIS
+.B ports
+[\fIOPTIONS\fR] \fIHOST\fR [\fISTART-END\fR]
+.SH DESCRIPTION
+\fBports\fR is a small command-line TCP port scanner that attempts to connect to a range of ports on a target host. It is intended as a minimal utility for quickly checking whether ports are open on a target machine.
+.SH OPTIONS
+.TP
+.B -h, --help
+Show a short help message and exit.
+.TP
+.B -v, --verbose
+Enable verbose output.
+.TP
+.B -t, --timeout \fITIMEOUT\fR
+Set connection timeout in seconds (default depends on build).
+.SH EXAMPLES
+.TP
+Scan common ports on example.com:
+.IP
+.RS
+.nf
+  ports example.com
+.fi
+.RE
+.TP
+Scan an explicit range of ports on 192.0.2.1:
+.IP
+.RS
+.nf
+  ports 192.0.2.1 20-1024
+.fi
+.RE
+.SH EXIT STATUS
+The command exits with zero on success, and non-zero if an error occurred (for example, invalid arguments or network failures).
+.SH SEE ALSO
+\fBnc(1)\fR, \fBnmap(1)\fR
+.SH AUTHOR
+Created by the repository maintainer.
